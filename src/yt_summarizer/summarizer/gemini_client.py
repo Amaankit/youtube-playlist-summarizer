@@ -5,7 +5,8 @@ from google import genai
 log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "gemini-3.8-flash"
-MAX_RETRIES = 3
+MAX_RETRIES = 5
+BASE_DELAY = 2
 
 
 class GeminiSummarizer:
@@ -25,17 +26,21 @@ class GeminiSummarizer:
                 response = self.client.models.generate_content(
                     model=self.model, contents=prompt
                 )
+                # Small delay between successful calls to respect rate limits
+                time.sleep(1)
                 return response.text
             except Exception as e:
+                wait = BASE_DELAY ** (attempt + 1)
                 log.warning(
-                    "Gemini API attempt %d/%d failed for '%s': %s",
+                    "Gemini API attempt %d/%d failed for '%s' (retry in %ds): %s",
                     attempt + 1,
                     MAX_RETRIES,
                     title,
+                    wait,
                     e,
                 )
                 if attempt < MAX_RETRIES - 1:
-                    time.sleep(2 ** (attempt + 1))
+                    time.sleep(wait)
 
         log.error("All %d attempts failed for '%s'", MAX_RETRIES, title)
         return None

@@ -11,6 +11,7 @@ from rich.prompt import Prompt, Confirm
 from yt_summarizer.youtube.playlist import detect_url_type, extract_playlist, extract_single_video
 from yt_summarizer.youtube.transcript import fetch_transcript
 from yt_summarizer.summarizer.gemini_client import GeminiSummarizer
+from yt_summarizer.summarizer.groq_client import GroqSummarizer
 from yt_summarizer.cache.db import CacheDB
 from yt_summarizer.output.markdown import sanitize_filename, write_video_markdown, write_index_markdown
 from yt_summarizer.models.video import Summary
@@ -30,6 +31,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Summary detail level (default: detailed)")
     parser.add_argument("--force", action="store_true", help="Force regeneration, bypass cache")
     parser.add_argument("--output", help="Output directory (default: ./output/<title>/)")
+    parser.add_argument("--provider", choices=["gemini", "groq"], default="groq",
+                        help="LLM provider (default: groq)")
     return parser.parse_args(argv)
 
 
@@ -40,9 +43,10 @@ def interactive_prompt() -> dict:
     url = Prompt.ask("[bold]Enter YouTube URL[/bold]")
     intent = Prompt.ask("[bold]What is this playlist/video about?[/bold] (e.g., DSA, System Design)")
     detail = Prompt.ask("[bold]Detail level[/bold]", choices=["brief", "detailed"], default="detailed")
+    provider = Prompt.ask("[bold]LLM provider[/bold]", choices=["gemini", "groq"], default="groq")
     force = Confirm.ask("[bold]Force regenerate cached summaries?[/bold]", default=False)
 
-    return {"url": url, "intent": intent, "detail": detail, "force": force}
+    return {"url": url, "intent": intent, "detail": detail, "provider": provider, "force": force}
 
 
 def process_videos(videos, intent, detail, force, output_dir, playlist_title, db, summarizer):
@@ -118,11 +122,13 @@ def main():
         url = inputs["url"]
         intent = inputs["intent"]
         detail = inputs["detail"]
+        provider = inputs["provider"]
         force = inputs["force"]
     else:
         url = args.video or args.playlist
         intent = args.intent
         detail = args.detail
+        provider = args.provider
         force = args.force
 
         if url is None:
@@ -143,14 +149,23 @@ def main():
         console.print("[red]Error: Could not detect URL type. Use --video or --playlist flag.[/red]")
         sys.exit(1)
 
-    # Check API key
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        console.print("[red]Error: GEMINI_API_KEY not set. Add it to .env file.[/red]")
-        sys.exit(1)
+    # Check API key and create summarizer
+    if provider == "groq":
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            console.print("[red]Error: GROQ_API_KEY not set. Add it to .env file.[/red]")
+            sys.exit(1)
+        summarizer = GroqSummarizer(api_key=api_key)
+        console.print(f"[dim]Using Groq ({summarizer.model})[/dim]")
+    else:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            console.print("[red]Error: GEMINI_API_KEY not set. Add it to .env file.[/red]")
+            sys.exit(1)
+        summarizer = GeminiSummarizer(api_key=api_key)
+        console.print(f"[dim]Using Gemini ({summarizer.model})[/dim]")
 
     db = CacheDB()
-    summarizer = GeminiSummarizer(api_key=api_key)
 
     if url_type == "playlist":
         console.print(f"\n[bold]Fetching playlist info...[/bold]")

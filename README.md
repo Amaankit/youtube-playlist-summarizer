@@ -1,10 +1,12 @@
 # YouTube Playlist Summarizer
 
-A Python CLI tool that fetches YouTube video/playlist transcripts and generates per-video markdown summaries using Google Gemini LLM. Includes SQLite caching to avoid redundant API calls on re-runs.
+A Python CLI tool that fetches YouTube video/playlist transcripts and generates per-video markdown summaries using LLMs (Groq or Gemini). Includes SQLite caching to avoid redundant API calls on re-runs.
 
 ## Features
 
 - Summarize a **single video** or an **entire playlist**
+- **Multiple LLM providers**: Groq (default, 14,400 req/day free) and Gemini
+- **Multi-language transcripts**: auto-detects Hindi, English, and falls back to any available language
 - **Intent-aware** summaries (e.g., DSA, System Design, e-commerce)
 - **Two detail levels**: brief (300-500 words) or detailed (800-1500 words)
 - **Inline code extraction** with explanations when videos contain code
@@ -15,7 +17,9 @@ A Python CLI tool that fetches YouTube video/playlist transcripts and generates 
 ## Prerequisites
 
 - Python 3.10+
-- [Gemini API key](https://aistudio.google.com/apikey)
+- API key from one of:
+  - [Groq](https://console.groq.com/keys) (recommended -- free, 14,400 requests/day, no credit card)
+  - [Gemini](https://aistudio.google.com/apikey) (free but only 20 requests/day)
 
 ## Setup
 
@@ -32,9 +36,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 
-# Add your Gemini API key
+# Add your API key(s)
 cp .env.example .env
-# Edit .env and add your GEMINI_API_KEY
+# Edit .env and add GROQ_API_KEY and/or GEMINI_API_KEY
 ```
 
 ## Usage
@@ -42,7 +46,7 @@ cp .env.example .env
 ### Single Video
 
 ```bash
-python main.py --video "https://www.youtube.com/watch?v=VIDEO_ID" --intent "DSA" --detail detailed
+python main.py --video "https://www.youtube.com/watch?v=VIDEO_ID" --intent "DSA"
 ```
 
 ### Full Playlist
@@ -57,6 +61,16 @@ python main.py --playlist "https://www.youtube.com/playlist?list=PLAYLIST_ID" --
 python main.py
 ```
 
+### Choose Provider
+
+```bash
+# Groq (default -- fast, high free-tier limit)
+python main.py --playlist "URL" --intent "DSA" --provider groq
+
+# Gemini
+python main.py --playlist "URL" --intent "DSA" --provider gemini
+```
+
 ### All Options
 
 | Flag | Description | Default |
@@ -65,6 +79,7 @@ python main.py
 | `--playlist` | Playlist URL | - |
 | `--intent` | What the content is about (e.g., DSA, System Design) | Required |
 | `--detail` | `brief` or `detailed` | `detailed` |
+| `--provider` | `groq` or `gemini` | `groq` |
 | `--force` | Bypass cache, regenerate everything | `False` |
 | `--output` | Custom output directory | `./output/<title>/` |
 
@@ -97,7 +112,8 @@ src/yt_summarizer/
 │   ├── playlist.py          # Playlist metadata extraction (yt-dlp)
 │   └── transcript.py        # Transcript fetching (youtube-transcript-api)
 ├── summarizer/
-│   ├── gemini_client.py     # Gemini API client with retry
+│   ├── groq_client.py       # Groq API client (llama-3.3-70b-versatile)
+│   ├── gemini_client.py     # Gemini API client (gemini-3.8-flash)
 │   └── prompts.py           # Brief/detailed prompt templates
 ├── cache/db.py              # SQLite caching layer
 ├── output/markdown.py       # Markdown file generation
