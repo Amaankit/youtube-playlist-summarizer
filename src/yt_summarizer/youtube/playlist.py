@@ -54,6 +54,7 @@ def extract_single_video(url: str) -> Video:
         "quiet": True,
         "no_warnings": True,
         "skip_download": True,
+        "noplaylist": True,
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(url, download=False)
