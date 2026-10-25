@@ -1,14 +1,28 @@
 import logging
+import os
+from http.cookiejar import MozillaCookieJar
 from youtube_transcript_api import YouTubeTranscriptApi
 from yt_summarizer.models.video import Transcript
 
 log = logging.getLogger(__name__)
 
+COOKIE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "cookies.txt")
+
+
+def _make_api() -> YouTubeTranscriptApi:
+    cookie_path = os.path.normpath(COOKIE_FILE)
+    if os.path.exists(cookie_path):
+        jar = MozillaCookieJar(cookie_path)
+        jar.load(ignore_discard=True, ignore_expires=True)
+        log.info("Using cookies from %s", cookie_path)
+        return YouTubeTranscriptApi(cookie_jar=jar)
+    return YouTubeTranscriptApi()
+
 
 def fetch_transcript(video_id: str, languages: list[str] | None = None) -> Transcript | None:
     if languages is None:
         languages = ["en", "hi", "en-IN"]
-    api = YouTubeTranscriptApi()
+    api = _make_api()
     # Try requested languages first
     try:
         fetched = api.fetch(video_id, languages=languages)

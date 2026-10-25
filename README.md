@@ -41,6 +41,15 @@ cp .env.example .env
 # Edit .env and add GROQ_API_KEY and/or GEMINI_API_KEY
 ```
 
+### YouTube Cookies (if IP-blocked)
+
+If YouTube blocks transcript requests (common after many requests), export your browser cookies:
+
+1. Install [Get cookies.txt LOCALLY](https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc) in Chrome
+2. Go to youtube.com (logged in)
+3. Export cookies and save as `cookies.txt` in the project root
+4. The tool auto-detects and uses it
+
 ## Usage
 
 ### Single Video
